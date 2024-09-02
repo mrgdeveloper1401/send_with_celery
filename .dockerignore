@@ -1,0 +1,9 @@
+./mypy_cache
+./.venv
+./.env
+env
+.venv
+.mypy_cache
+.gitignore
+db.sqlite3
+./db.sqlite3

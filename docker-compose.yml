@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    restart: always
+    networks:
+      - main
+    depends_on:
+      - postgres
+    environment:
+      - DEBUG=True
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=localhost
+      - SECRET_KEY=${SECRET_KEY}
+    command: >
+      sh -c "python3 manage.py makemigrations &&
+      python3 manage.py migrate &&
+      python3 manage.py createsuperuser --username admin --email m.goodarzi606@gmail.com --noinput || true; \
+      python3 manage.py collectstatic --noinput"
+    volumes:
+      - static:/var/www/static
+      - media:/var/www/media
+  
+  postgres:
+    build: .
+    container_name: postgres_db
+    image: postgres:16-alpine
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - main
+
+  nginx:
+    build: .
+    restart: always
+    container_name: nginx
+    image: nginx:1.24-alpine
+    ports:
+      - 8080:80
+    volumes:
+      - nginx/nginx.conf:/etc/nginx/nginx.conf
+      - static:/var/www/static
+      - media:/var/www/media
+    depends_on:
+      - postgres
+    restart: always
+    networks:
+      - main
+  
+  celery_worker:
+    build: .
+    container_name: celery_app
+    image: celery:alpine
+    restart: on-failure
+    depends_on:
+      - app
+      - postgres
+      - nginx
+    command: "celery -A send_email worker -l INFO"
+    networks:
+      - main
+
+
+volumes:
+  postgres_data:
+  static:
+  media:
+
+networks:
+  main:
